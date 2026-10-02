@@ -1,3 +1,22 @@
+# Website adapter update — 2026-10-02
+
+The default application now targets `http://slither.com/io`; the local fixture is explicitly selected with `--target fixture`. Project dependencies and `uv.lock` are now present in the workspace.
+
+Current checks using the installed Python 3.12 environment:
+
+- `uv run --no-sync pytest -q`: **98 passed, 1 skipped** (opt-in Chromium integration).
+- `uv run --no-sync mypy`: **passed**, including fixes for two earlier typing issues.
+- Ruff lint/format: passed.
+- `node tests/bridge.cjs`: passed, including shared Space-key cleanup on takeover.
+- `node tests/slither_adapter.cjs`: passed for modern client-shaped state objects, projection, food/enemy sectors, missingness, death, and respawn rejection. This is an adapter logic test, not live website validation.
+- The default-target construction and snapshot/speed conversion tests also pass.
+
+Live validation remains blocked: `curl http://slither.com/io` fails with `Could not resolve host: slither.com`. The actual installed application was launched with `--headless --seconds 5 --episodes 1`, but Chromium build 1243 exited on `SIGTRAP` before navigation (`BrowserType.launch: TargetClosedError`, macOS power-notification error). No live multiplayer gameplay or physical-input takeover is claimed as tested.
+
+The original delivery record below is historical; its missing-dependency, missing-lockfile, and unrun-mypy limitations no longer describe the current installed workspace.
+
+---
+
 # Delivery validation — 2026-10-02
 
 The project code, fixture, configuration, tests, and documentation were created in the initially empty repository. No existing work was overwritten. Python 3.12.12 and the project `.venv` were initialized with uv.

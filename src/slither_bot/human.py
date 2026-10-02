@@ -10,6 +10,7 @@ class HumanInput:
         self.pointer: tuple[float, float] | None = None
         self.boost: bool | None = None
         self.revision = 0
+        self._other_boost: set[str] = set()
 
     def reset(self) -> None:
         self.pointer = None
@@ -36,12 +37,22 @@ class HumanInput:
                 if self.boost != boost:
                     self.boost = boost
                     self.revision += 1
+            elif event.kind == "boost":
+                # Space is the supported demonstration boost control. Other game controls
+                # remain in raw events and invalidate labels rather than guessing their OR state.
+                self.boost = None
+                code = str(event.payload.get("code", "unknown"))
+                if event.payload.get("down"):
+                    self._other_boost.add(code)
+                else:
+                    self._other_boost.discard(code)
+                self.revision += 1
         elif event.origin == "automation_candidate" and event.kind in {"pointer", "boost"}:
             # Could be a coincident physical event; never use it as a human label.
             self.revision += 1
 
     def action(self, center: tuple[float, float] | None) -> Action | None:
-        if self.pointer is None or self.boost is None or center is None:
+        if self.pointer is None or self.boost is None or center is None or self._other_boost:
             return None
         dx, dy = self.pointer[0] - center[0], self.pointer[1] - center[1]
         norm = math.hypot(dx, dy)

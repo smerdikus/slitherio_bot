@@ -15,7 +15,7 @@ class BrowserConfig:
     width: int = 1100
     height: int = 800
     screenshots: bool = False
-    timeout_s: float = 5.0
+    timeout_s: float = 30.0
     fixture_lifetime_s: float = 12.0
 
 
@@ -24,8 +24,8 @@ class RuntimeConfig:
     control_hz: float = 10.0
     sectors: int = 16
     max_observation_age_s: float = 0.3
-    episode_time_limit_s: float = 60.0
-    recovery_timeout_s: float = 5.0
+    episode_time_limit_s: float = 3600.0
+    recovery_timeout_s: float = 15.0
     recovery_retries: int = 3
     max_episodes: int = 0
     run_seconds: float = 0.0
@@ -66,6 +66,8 @@ class Config:
     runs_dir: Path = Path("runs")
     seed: int = 0
     agent: str = "deterministic"
+    target: str = "slither"
+    nickname: str = "slither-bot"
 
     def __post_init__(self) -> None:
         positive = (
@@ -100,10 +102,14 @@ class Config:
             raise ValueError("Limits must be nonnegative and finite")
         if self.agent not in {"deterministic", "random"}:
             raise ValueError("Unknown baseline agent")
+        if self.target not in {"slither", "fixture"}:
+            raise ValueError("target must be slither or fixture")
+        if not self.nickname.strip() or len(self.nickname) > 24:
+            raise ValueError("nickname must contain 1-24 characters")
         keys = vars(self.keys).values()
         if len(set(keys)) != len(vars(self.keys)) or any(not k for k in keys):
             raise ValueError("Shortcut codes must be unique and nonempty")
-        if any(k in {"Space", "ShiftLeft", "ShiftRight"} for k in keys):
+        if any(k in {"Space", "ShiftLeft", "ShiftRight", "ArrowUp"} for k in keys):
             raise ValueError("Shortcut codes cannot overlap boost keys")
         if any(not math.isfinite(v) for v in vars(self.reward).values()):
             raise ValueError("Reward weights must be finite")

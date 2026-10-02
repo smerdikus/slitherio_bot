@@ -6,6 +6,7 @@ import logging
 from dataclasses import replace
 from pathlib import Path
 
+from slither_bot.adapter import GameAdapter
 from slither_bot.app import Application
 from slither_bot.browser import PlaywrightGameBrowser
 from slither_bot.config import Config
@@ -15,6 +16,7 @@ from slither_bot.model import BaselineAgent
 from slither_bot.observer import SnapshotObserver
 from slither_bot.replay import BoundedReplay
 from slither_bot.reward import LengthReward
+from slither_bot.slither_adapter import SlitherAdapter
 from slither_bot.storage import RunStorage
 from slither_bot.train import ModelWorker, Trainer
 from slither_bot.types import ControlMode
@@ -22,10 +24,15 @@ from slither_bot.types import ControlMode
 
 def build(config: Config) -> Application:
     controller = InputController(config.runtime.initial_mode)
+    adapter: GameAdapter = (
+        SlitherAdapter(config.runtime.sectors, config.nickname)
+        if config.target == "slither"
+        else FixtureAdapter(config.runtime.sectors, config.browser.fixture_lifetime_s)
+    )
     browser = PlaywrightGameBrowser(
         config,
         controller,
-        FixtureAdapter(config.runtime.sectors, config.browser.fixture_lifetime_s),
+        adapter,
     )
     agent = BaselineAgent(config.agent, config.seed)
     worker = ModelWorker()
@@ -44,7 +51,11 @@ def build(config: Config) -> Application:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run the local Slither-like input TEST FIXTURE")
+    parser = argparse.ArgumentParser(
+        description="Play and record at http://slither.com/io using headed Chromium"
+    )
+    parser.add_argument("--target", choices=["slither", "fixture"], help="Default: slither website")
+    parser.add_argument("--nickname", help="Nickname for the Slither website")
     parser.add_argument("--config", type=Path, help="Nested JSON configuration file")
     parser.add_argument("--headless", action="store_true", help="For automated smoke checks")
     parser.add_argument("--mode", choices=["AI", "HUMAN"])
@@ -86,6 +97,8 @@ def main() -> None:
                     "runs_dir": args.runs_dir,
                     "seed": args.seed,
                     "agent": args.agent,
+                    "target": args.target,
+                    "nickname": args.nickname,
                 }.items()
                 if value is not None
             },

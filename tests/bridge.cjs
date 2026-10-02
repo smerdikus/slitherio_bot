@@ -55,3 +55,19 @@ assert.equal(events.at(-1).origin, 'human_candidate');
 fire('keydown', {code:'Escape'});
 assert.equal(bridge.claim({id:5, kind:'boost', generation:bridge.state.generation, down:true}), false);
 console.log('Bridge checks passed: shortcuts, repeat suppression, generation, focus, ledger, shutdown.');
+
+// Real-site Space ownership: automation keyup must not cancel an observed physical hold.
+handlers.clear(); events.length=0;
+window.__slitherBridgeConfig.boost_code='Space';
+vm.runInNewContext(fs.readFileSync(path.join(__dirname,
+  '../src/slither_bot/scripts/input_bridge.js'), 'utf8'), {window, document, performance:{now:()=>now}});
+const live=window.__slitherBridge;
+assert(live.claim({id:1,kind:'boost',down:true,generation:0}));
+fire('keydown',{code:'Space',isTrusted:true});
+assert.equal(events.at(-1).origin,'automation_candidate');
+fire('keydown',{code:'Space',isTrusted:true}); // observed physical hold
+fire('keydown',{code:'F8'});
+assert(live.claim({id:2,kind:'boost',down:false,generation:1,cleanup:true}));
+assert(fire('keyup',{code:'Space',isTrusted:true}).stopped);
+assert(!fire('keyup',{code:'Space',isTrusted:true}).stopped); // physical release reaches game
+console.log('Shared Space takeover checks passed.');

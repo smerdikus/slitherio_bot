@@ -1,18 +1,38 @@
 {
-  "browser": {"headless": false, "fixture_lifetime_s": 12.0},
+  "browser": {
+    "headless": false,
+    "fixture_lifetime_s": 12.0
+  },
   "runtime": {
     "control_hz": 10.0,
     "sectors": 16,
     "initial_mode": "AI",
     "max_observation_age_s": 0.3,
-    "episode_time_limit_s": 60.0,
-    "recovery_timeout_s": 5.0,
+    "episode_time_limit_s": 3600.0,
+    "recovery_timeout_s": 15.0,
     "recovery_retries": 3
   },
-  "training": {"replay_capacity": 10000, "batch_size": 64, "warmup_steps": 256, "every_steps": 10},
-  "reward": {"length_gain_weight": 1.0, "survival_reward_per_second": 0.1, "death_penalty": 5.0},
-  "keys": {"toggle_mode": "F8", "toggle_training": "F9", "checkpoint": "F10", "restart": "F11", "shutdown": "Escape"},
+  "training": {
+    "replay_capacity": 10000,
+    "batch_size": 64,
+    "warmup_steps": 256,
+    "every_steps": 10
+  },
+  "reward": {
+    "length_gain_weight": 1.0,
+    "survival_reward_per_second": 0.1,
+    "death_penalty": 5.0
+  },
+  "keys": {
+    "toggle_mode": "F8",
+    "toggle_training": "F9",
+    "checkpoint": "F10",
+    "restart": "F11",
+    "shutdown": "Escape"
+  },
   "runs_dir": "runs",
   "agent": "deterministic",
-  "seed": 0
+  "seed": 0,
+  "target": "slither",
+  "nickname": "slither-bot"
 }

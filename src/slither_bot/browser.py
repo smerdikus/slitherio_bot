@@ -14,9 +14,9 @@ if TYPE_CHECKING:
     from playwright.async_api import Browser, Page, Playwright
 
 from slither_bot.actions import mouse_target
+from slither_bot.adapter import GameAdapter
 from slither_bot.config import Config
 from slither_bot.controller import InputController
-from slither_bot.fixture_adapter import FixtureAdapter
 from slither_bot.types import (
     Action,
     ActionReceipt,
@@ -30,9 +30,7 @@ log = logging.getLogger(__name__)
 
 
 class PlaywrightGameBrowser:
-    def __init__(
-        self, config: Config, controller: InputController, adapter: FixtureAdapter
-    ) -> None:
+    def __init__(self, config: Config, controller: InputController, adapter: GameAdapter) -> None:
         self.config = config
         self.controller = controller
         self.adapter = adapter
@@ -68,12 +66,14 @@ class PlaywrightGameBrowser:
             "keys": vars(self.config.keys),
             "generation": state.generation,
             "mode": state.mode,
+            "boost_code": self.adapter.boost_code,
         }
         script = (Path(__file__).parent / "scripts" / "input_bridge.js").read_text()
         await self.page.add_init_script(
             "window.__slitherBridgeConfig=" + json.dumps(config) + ";" + script
         )
-        await self.page.goto(self.adapter.url)
+        log.info("Opening %s", self.adapter.url)
+        await self.page.goto(self.adapter.url, wait_until="domcontentloaded")
         await self.adapter.configure(self.page)
         # Midpoint calibration; preserve RTT/2 as uncertainty instead of claiming exact alignment.
         before = time.monotonic_ns()
@@ -207,7 +207,11 @@ class PlaywrightGameBrowser:
                         await page.mouse.move(x, y)
                         moved = True
                         await self._finish_command()
-                    if moved and await self._claim(generation, "boost", down=action.boost):
+                    if moved and action.boost == self._boost_owned:
+                        # No key event will be sent: don't reserve a ledger entry that could
+                        # accidentally match a physical Space event on the real website.
+                        boosted = self._owns(generation)
+                    elif moved and await self._claim(generation, "boost", down=action.boost):
                         if action.boost and not self._boost_owned:
                             # Mark ownership before dispatch, so cancellation still triggers keyup.
                             self._boost_owned = True

@@ -1,5 +1,9 @@
 (() => {
+  if (window.top && window.top !== window) return;
   const cfg = window.__slitherBridgeConfig;
+  const boostCode = cfg.boost_code || "ShiftLeft";
+  const physicalBoost = new Set();
+  const boostCodes = boostCode === "Space" ? ["Space", "ArrowUp"] : ["Space", boostCode];
   const state = {generation: cfg.generation, mode: cfg.mode, focused: true, shutdown: false};
   const shortcuts = Object.fromEntries(Object.entries(cfg.keys).map(([command, code]) => [code, command]));
   let ledger = null;
@@ -12,7 +16,7 @@
     if (!ledger || performance.now() - ledger.at > 500) return 'human_candidate';
     const match = kind === ledger.kind && (kind === 'pointer'
       ? Math.abs(payload.x - ledger.x) <= 1 && Math.abs(payload.y - ledger.y) <= 1
-      : payload.code === 'ShiftLeft' && payload.down === ledger.down);
+      : payload.code === boostCode && payload.down === ledger.down);
     if (match) {
       payload.command_id = ledger.id;
       // Coincident physical input cannot be distinguished perfectly. Keep this ambiguity explicit.
@@ -46,12 +50,31 @@
     emit('pointer', payload, identify('pointer', payload));
   }, true);
   for (const name of ['keydown', 'keyup']) window.addEventListener(name, event => {
-    if (!['Space', 'ShiftLeft'].includes(event.code) || event.repeat) return;
+    if (!boostCodes.includes(event.code) || event.repeat) return;
     const payload = {code: event.code, down: name === 'keydown', trusted: event.isTrusted};
-    emit('boost', payload, identify('boost', payload));
+    const origin = identify('boost', payload);
+    if (origin === 'human_candidate') {
+      if (payload.down) physicalBoost.add(event.code); else physicalBoost.delete(event.code);
+    }
+    // Slither uses Space for both owners. Release the automation keyboard state while
+    // preventing its keyup from cancelling a human boost held through takeover.
+    if (origin === 'automation_candidate' && !payload.down && boostCode === 'Space'
+        && physicalBoost.size > 0) {
+      event.preventDefault(); event.stopImmediatePropagation();
+    }
+    emit('boost', payload, origin);
   }, true);
+  if (boostCode === 'Space') {
+    for (const name of ['pointerdown', 'pointerup']) window.addEventListener(name, event => {
+      if (event.button !== 0) return;
+      const down = name === 'pointerdown';
+      if (down) physicalBoost.add('MouseLeft'); else physicalBoost.delete('MouseLeft');
+      emit('boost', {code:'MouseLeft', down, trusted:event.isTrusted});
+    }, true);
+  }
   function lostFocus() {
     if (!state.focused) return;
+    physicalBoost.clear();
     state.focused = false;
     state.mode = 'HUMAN';
     state.generation++;

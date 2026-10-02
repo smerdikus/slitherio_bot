@@ -42,7 +42,7 @@ async def test_model_operations_are_serialized() -> None:
 
     try:
         result = await asyncio.gather(worker.call(job, "predict"), worker.call(job, "save"))
-        assert result == ["predict", "save"]
+        assert list(result) == ["predict", "save"]
         assert calls == ["predict-start", "predict-end", "save-start", "save-end"]
     finally:
         await worker.close()

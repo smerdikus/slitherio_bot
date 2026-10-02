@@ -15,6 +15,7 @@ from slither_bot.types import BrowserSnapshot, CanvasBounds, ExtractedGameState,
 class FixtureAdapter:
     url = (Path(__file__).parent / "fixtures" / "game.html").as_uri()
     boost_key = "Shift"
+    boost_code = "ShiftLeft"
 
     def __init__(self, sectors: int, lifetime_s: float) -> None:
         self.sectors = sectors
@@ -80,7 +81,8 @@ class FixtureAdapter:
         return BrowserSnapshot(
             timestamp,
             GameStatus(g["status"]),
-            *data["viewport"],
+            data["viewport"][0],
+            data["viewport"][1],
             (canvas.left + x, canvas.top + y),
             game=game,
         )
