@@ -1,0 +1,15 @@
+.venv/
+.uv-cache/
+.browsers/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+runs/
+checkpoints/
+*.pt
+*.pth
+dist/
+*.egg-info/
+.DS_Store

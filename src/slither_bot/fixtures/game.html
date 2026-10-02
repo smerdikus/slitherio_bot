@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Slither bot — input test fixture</title>
+<style>
+  body { background:#14212d; color:#e9f1f8; font:16px system-ui; margin:24px; }
+  canvas { display:block; width:800px; height:500px; background:#0b1520; margin:20px 30px; }
+  button { padding:8px 16px; } #hud { font-variant-numeric:tabular-nums; }
+</style>
+<h1>Browser input test fixture</h1>
+<p>This moving dot exercises the bot interfaces. It is not a realistic Slither simulator.</p>
+<p>Pointer steers · Space boosts · F8 mode · F9 training permission · F10 save · F11 restart · Esc exit</p>
+<button id="start">Start / restart fixture</button> <span id="hud"></span>
+<canvas id="arena" width="800" height="500"></canvas>
+<script>
+(() => {
+  const canvas = document.querySelector('#arena'), ctx = canvas.getContext('2d');
+  const hud = document.querySelector('#hud');
+  let humanBoost = false, aiBoost = false, last = performance.now(), age = 0;
+  let target = {x:600, y:250}, pendingStart = null;
+  const game = {status:'MENU', instance_id:0, x:400, y:250, size:10, score:0,
+    heading:0, speed:0, lifetime:12};
+  const food = [{x:140,y:100}, {x:660,y:120}, {x:650,y:410}, {x:200,y:390}];
+  function start() {
+    clearTimeout(pendingStart);
+    game.status = 'STARTING';
+    pendingStart = setTimeout(() => {
+      Object.assign(game, {status:'RUNNING', instance_id:game.instance_id+1,
+        x:400,y:250,size:10,score:0,heading:0,speed:0});
+      age = 0; target = {x:600,y:250};
+    }, 80);
+  }
+  document.querySelector('#start').addEventListener('click', start);
+  window.addEventListener('pointermove', event => {
+    const r = canvas.getBoundingClientRect();
+    target = {x:(event.clientX-r.left)*canvas.width/r.width,
+      y:(event.clientY-r.top)*canvas.height/r.height};
+  });
+  for (const name of ['keydown','keyup']) window.addEventListener(name, event => {
+    if (event.code === 'Space') {humanBoost = name === 'keydown'; event.preventDefault();}
+    // Dedicated fixture automation channel. Manual boost only uses Space.
+    if (event.code === 'ShiftLeft') aiBoost = name === 'keydown';
+  });
+  window.addEventListener('blur', () => {humanBoost = false; aiBoost = false;});
+  function frame(now) {
+    const dt = Math.min((now-last)/1000, 0.1); last = now;
+    if (game.status === 'RUNNING') {
+      age += dt;
+      game.heading = Math.atan2(target.y-game.y, target.x-game.x);
+      game.speed = humanBoost || aiBoost ? 130 : 65;
+      game.x += Math.cos(game.heading)*game.speed*dt;
+      game.y += Math.sin(game.heading)*game.speed*dt;
+      // Deliberately simple measurable growth; these are fixture units.
+      game.size += dt*(humanBoost || aiBoost ? 0.8 : 0.5);
+      game.score = (game.size-10)*10;
+      if (game.x < 9 || game.y < 9 || game.x > 791 || game.y > 491 || age > game.lifetime)
+        game.status = 'DEAD';
+    }
+    ctx.clearRect(0,0,800,500);
+    ctx.fillStyle='#f4bc65';
+    for (const dot of food) {ctx.beginPath();ctx.arc(dot.x,dot.y,4,0,2*Math.PI);ctx.fill();}
+    ctx.fillStyle=game.status === 'DEAD' ? '#e27979' : '#5bdec7';
+    ctx.beginPath();ctx.arc(game.x,game.y,8,0,2*Math.PI);ctx.fill();
+    hud.textContent = `${game.status} | score ${game.score.toFixed(1)} | size ${game.size.toFixed(1)}`
+      + ` | mode ${window.__slitherBridge?.state.mode ?? '?'} | boost ${humanBoost||aiBoost}`;
+    requestAnimationFrame(frame);
+  }
+  window.__fixture = {game, food, start, get boost() {return {human:humanBoost, ai:aiBoost};}};
+  requestAnimationFrame(frame);
+})();
+</script>
+</html>
